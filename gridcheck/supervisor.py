@@ -22,7 +22,7 @@ def get_environ_maps(arg_parser, env_prefix):
             if len(name) > 1:
                 # Map the env name to the first
                 env_key = '%s%s' % (env_prefix, name)
-                env_arg_map[env_key] = [action]
+                env_arg_map[env_key] = action
                 arg_env_map[action.option_strings[0]].append(env_key)
             else:
                 pass  # Do nothing with 1 char args.
@@ -39,13 +39,12 @@ def get_args_from_env(arg_parser, arg_source, env_source, env_prefix):
     for env_key, env_val in env_source.items():
         # Determine the arg_key this will map to.
         arg_key_action = env_arg_map.get(env_key)
-        print(env_arg_map)
 
         # If it doesn't exist, we don't care about it.
         if not arg_key_action:
-            print("byu")
             continue
-
+        else:
+            pass
         # Reassign to the first argument that it will be mapped to.
         arg_key = arg_key_action.option_strings[0]
 
@@ -59,20 +58,17 @@ def get_args_from_env(arg_parser, arg_source, env_source, env_prefix):
             logger.warning("Discarding environment variable `%s` which conflicts with cli argument `%s`" % (
                            env_key, '|'.join(conflict)))
         else:
-            new_arg_source_dict[arg_key]
+            new_arg_source_dict[arg_key] = env_val
 
     # Convert the dictionary into a flattened list.
     # FIXME : What can we do to detect for lists and explode them into multi args?
     for env_key, env_val in new_arg_source_dict.items():
         new_arg_source_list += [env_key, env_val]
 
-    print(arg_source)
-    print(env_source)
-    print(new_arg_source_list)
-    return new_arg_source_list
+    return arg_source + new_arg_source_list
 
 
-def get_args(sysargs=sys.argv, environ=os.environ):
+def get_args(sysargs=sys.argv[1:], environ=os.environ):
     parser = argparse.ArgumentParser(description='Gridcheck')
     parser.add_argument(
         '--seed-host', '-s',
@@ -97,6 +93,9 @@ def get_args(sysargs=sys.argv, environ=os.environ):
     parser.add_argument('--routable-port')
     parser.add_argument('--routable-hostname')
 
+    parser.add_argument('--check-config', action='store_true', default=False,
+                        help="Don't start a server, just check and print settings")
+
     # Load in the settings
     args = parser.parse_args(get_args_from_env(parser, sysargs, environ, 'GRIDCHECK_'))
 
@@ -109,13 +108,13 @@ def get_args(sysargs=sys.argv, environ=os.environ):
 
     #  Just double check that all addressing stuff is really here.
     errors = []
-    for k in ['local-ip', 'local-hostname', 'local-port', 'routable-ip', 'routable-hostname', 'routable-port']:
+    for k in ['local_ip', 'local_hostname', 'local_port', 'routable_ip', 'routable_hostname', 'routable_port']:
         if not getattr(args, k):
             errors.append("Could not determine %s" % k)
 
     # If we've accrued any errors, then bail.
     if errors:
-        args.error("\n".join(errors))
+        parser.error("\n".join(errors))
 
     return args
 
@@ -125,7 +124,9 @@ def main(is_main):
         return
 
     args = get_args()
-    print(args)
+
+    if args.check_config:
+        print(args)
 
 
 main(__name__)
